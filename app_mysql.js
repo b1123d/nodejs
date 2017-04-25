@@ -29,8 +29,8 @@ app.locals.pretty = true;
 app.use(bodyParser.urlencoded({extended: false}));
 app.set('views','./views_mysql');
 app.set('view engine','jade');
-app.listen(80,function(){
-  console.log('Conneted to 80!');
+app.listen(9000,function(){
+  console.log('Conneted to 9000!');
 });
 app.get('/upload',function(req,res){
   res.render('upload')
