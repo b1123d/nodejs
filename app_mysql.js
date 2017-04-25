@@ -39,21 +39,64 @@ app.post('/upload',upload.single('userfile'),function(req,res){
   console.log(req.file);
   res.send('Uploaded : '+ req.file.filename);
 });
-app.get('/topic/new',function(req,res){
-  fs.readdir('data',function(err,files){
+app.get('/topic/add',function(req,res){
+  var sql = 'SELECT id,title FROM topic';
+  conn.query(sql,function(err,topics,fields){
+    if(err){
+       console.log(err);
+       res.status(500).send('Internal Server Error');
+    }
+    res.render('add', {topics:topics});
+  });
+  // fs.readdir('data',function(err,files){
+  //   if(err){
+  //     console.log(err);
+  //     res.status(500).send('Internal Server Error');
+  //   }
+  // res.render('add', {topics:files});
+  // });
+});
+app.post('/topic/add',function(req,res){
+  var title = req.body.title;
+  var description = req.body.description;
+  var author = req.body.author;
+
+  var sql = 'INSERT INTO topic(title, description, author) VALUES(?,?,?)';
+  var params = [title,description,author];
+  conn.query(sql,params,function(err, rows, fields){
     if(err){
       console.log(err);
-      res.status(500).send('Internal Server Error');
+    }else {
+      console.log(rows);
     }
-  res.render('new', {topics:files});
   });
+  conn.end();
+  // fs.writeFile('./data/'+title,description,function(err){
+  //   if(err){
+  //     console.log(err);
+  //     res.status(500).send('Internal Server Error');
+  //   }
+  //   res.redirect('/topic/'+title);
+  // });
 });
-
 app.get(['/topic','/topic/:id'],function(req,res){
-     var sql = 'SELECT id,title FROM topic';
-    conn.query(sql,function(err,topics,fields){
+  var sql = 'SELECT id,title FROM topic';
+  conn.query(sql,function(err,topics,fields){
+    var id = req.params.id;
+    if(id){
+      var sql = 'SELECT * FROM topic WHERE id=?';
+      conn.query(sql,[id], function(err, topic, fields){
+        if(err){
+          console.log('err');
+          res.status(500).send('Internal Server Error');
+        }else{
+          res.render('view',{topics:topics, topic:topic[0]});
+        }
+      });
+    }else{
       res.render('view',{topics:topics});
-    });
+    }
+  });
 
 
   // fs.readdir('data',function(err,files){
@@ -77,17 +120,7 @@ app.get(['/topic','/topic/:id'],function(req,res){
   //   }
   // })
 })
-app.post('/topic',function(req,res){
-  var title = req.body.title;
-  var description = req.body.description;
-  fs.writeFile('./data/'+title,description,function(err){
-    if(err){
-      console.log(err);
-      res.status(500).send('Internal Server Error');
-    }
-    res.redirect('/topic/'+title);
-  });
-});
+
 // app.get('/topic/:id',function(req,res){
 //   var id = req.params.id;
 //   fs.readdir('data',function(err,files){
