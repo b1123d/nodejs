@@ -1,7 +1,7 @@
 var express = require('express');
 var app = express();
 var cookieParser = require('cookie-parser');
-app.use(cookieParser());
+app.use(cookieParser('12dsf3231r3!@$@df23'));
 
 
 var products = {
@@ -22,8 +22,8 @@ app.get('/products',function(req, res){
 });
 app.get('/cart/:id',function(req,res){
   var id = req.params.id;
-  if(req.cookies.cart){
-    var cart = req.cookies.cart;
+  if(req.signedCookies.cart){
+    var cart = req.signedCookies.cart;
   }else {
     var cart = {};
   }
@@ -31,12 +31,12 @@ app.get('/cart/:id',function(req,res){
     cart[id]=0;
   }
   cart[id] = parseInt(cart[id])+1;
-  res.cookie('cart',cart);
+  res.cookie('cart',cart, {signed:true});
   res.redirect('/cart')
   res.send('hi'+id);
 });
 app.get('/cart',function(req,res){
-  var cart = req.cookies.cart;
+  var cart = req.signedCookies.cart;
   if(!cart){
     res.send('Empty!');
   }else{
@@ -53,13 +53,13 @@ app.get('/cart',function(req,res){
 });
 
 app.get('/count',function(req, res){
-if(req.cookies.count){
-  var count = parseInt(req.cookies.count);
+if(req.signedCookies.count){
+  var count = parseInt(req.signedCookies.count);
 }else{
   var count = 0;
 }
-  res.cookie('count', count+1);
-  res.send('count: '+req.cookies.count);
+  res.cookie('count', count+1, {signed:true});
+  res.send('count: '+count);
 });
 app.listen(9000, function(){
   console.log('Connected 9000 port!!!');
