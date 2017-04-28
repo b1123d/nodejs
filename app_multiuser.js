@@ -3,6 +3,8 @@ var bodyParser = require('body-parser');
 var session = require('express-session');
 var MySQLStore = require('express-mysql-session')(session);
 var mysql = require('mysql');
+var bkfd2Password = require("pbkdf2-password");
+var hasher = bkfd2Password();
 var conn = mysql.createConnection({
   host     : '220.94.71.218',
   user     : 'b1123d',
@@ -60,9 +62,6 @@ app.get('/auth/register',function(req,res){
         <input type="password" name="password" placeholder="password">
       </p>
       <p>
-        <input type="text" name="salt" placeholder="salt">
-      </p>
-      <p>
         <input type="text" name="displayName" placeholder="displayName">
       </p>
       <p>
@@ -76,23 +75,20 @@ app.get('/auth/register',function(req,res){
   res.send(output);
 });
 app.post('/auth/register',function(req,res){
-  var aId = req.body.authId;
-  var uname = req.body.username;
-  var dpName = req.body.displayName;
-  var pwd = req.body.password;
-  var email = req.body.email;
-  var sql = `
-  INSERT INTO user(authId,username,password,displayName,email)
-  VALUES('${aId}','${uname}','${pwd}','${dpName}','${email}')
-  `;
-  conn.query(sql, function(err,rows,fields){
-    if(err){
-      console.log(err);
-      res.status(500).send('Internal Server Error');
-    }else{
-      console.log(rows);
-      res.redirect('/auth/login');
-    }
+  hasher({password:req.body.password}, function(err, pass, salt, hash){
+    var sql = `
+    INSERT INTO user(authId,username,password,salt,displayName,email)
+    VALUES('${req.body.authId}','${req.body.username}','${hash}','${salt}','${req.body.displayName}','${req.body.email}')
+    `;
+    conn.query(sql, function(err,rows,fields){
+      if(err){
+        console.log(err);
+        res.status(500).send('Internal Server Error');
+      }else{
+        console.log(rows);
+        res.redirect('/auth/login');
+      }
+    });
   });
 });
 app.get('/auth/login', function(req,res){
@@ -113,12 +109,10 @@ app.get('/auth/login', function(req,res){
   res.send(output);
 });
 app.post('/auth/login', function(req,res){
-  var uname = req.body.username;
-  var pwd = req.body.password;
   var sql = `
-  SELECT authId, password, displayName
+  SELECT authId, password, salt, displayName
   from user
-  where authId = '${uname}' and password = '${pwd}'
+  where authId = '${req.body.username}'
   `;
   conn.query(sql, function(err,rows,fields){
     if(err){
@@ -126,15 +120,25 @@ app.post('/auth/login', function(req,res){
       res.status(500).send('Internal Server Error');
     }else{
       if(!rows[0]){
-        res.send('Failed!!<a href="/auth/login">login</a>');
-      }else {
-        req.session.displayName = rows[0].displayName;
-        req.session.save(function(){
-          res.redirect('/welcome');
-        })
+        res.send('등록되지 않은 ID입니다. <a href="/auth/login">login</a>');
+      }
+      else {
+        return hasher({password:req.body.password, salt:rows[0].salt},function(err,pass,salt,hash){
+          if(hash == rows[0].password){
+            req.session.displayName = rows[0].displayName;
+            req.session.save(function(){
+              res.redirect('/welcome');
+            })
+          } else{
+              res.send('Who are you? <a href="/auth/login">login</a>');
+          }
+        });
       }
     }
   });
+
+
+
 });
 app.get('/auth/logout', function(req,res){
   delete req.session.displayName;
